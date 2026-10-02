@@ -58,6 +58,95 @@
   margin: 0;
 }
 
+.hud-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Pulsing LIVE Pill in HUD */
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 15px;
+  background: rgba(16, 185, 129, 0.12);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  border-radius: 9999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #34d399;
+  box-shadow: 0 2px 14px rgba(16, 185, 129, 0.2);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: default;
+  user-select: none;
+}
+
+.live-pill-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981, 0 0 16px #10b981;
+}
+
+.live-pill-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(52, 211, 153, 0.65);
+  animation: liveRing 2s infinite ease-out;
+}
+
+@keyframes liveRing {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+.live-pill-text {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.live-pill.live-pill-pulsing {
+  animation: liveArrivalPulse 1.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes liveArrivalPulse {
+  0% {
+    transform: scale(1);
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(52, 211, 153, 0.4);
+    box-shadow: 0 2px 14px rgba(16, 185, 129, 0.2);
+  }
+  20% {
+    transform: scale(1.14);
+    background: rgba(16, 185, 129, 0.35);
+    border-color: #34d399;
+    box-shadow: 0 0 25px rgba(52, 211, 153, 0.85), 0 0 50px rgba(52, 211, 153, 0.5);
+    color: #ffffff;
+  }
+  45% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(52, 211, 153, 0.4);
+    box-shadow: 0 2px 14px rgba(16, 185, 129, 0.2);
+    color: #34d399;
+  }
+}
+
 .network-pill {
   display: flex;
   align-items: center;

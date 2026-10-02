@@ -10,6 +10,7 @@ export interface BlockData {
   size: string;
   reward: string;
   status: 'finalized' | 'confirmed' | 'latest';
+  isExiting?: boolean;
 }
 
 export const mockBlocks: BlockData[] = [
@@ -144,3 +145,42 @@ export const mockBlocks: BlockData[] = [
     status: 'latest',
   },
 ];
+
+const KNOWN_MINERS = [
+  '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984',
+  '0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5',
+  '0x388c818ca8b9251b393131c08a73683246ab0304',
+  '0x4838b106fce9647bdf1e7877bf73ce8b0bad5f97',
+  '0x690b9a9e9aa1c9db991c7721a92d351db4fac990',
+];
+
+export function createNewBlock(previousBlock: BlockData): BlockData {
+  const nextNumber = previousBlock.number + 1;
+  const hexChars = '0123456789abcdef';
+  let randomHash = '0x';
+  for (let i = 0; i < 64; i++) {
+    randomHash += hexChars[Math.floor(Math.random() * hexChars.length)];
+  }
+
+  const miner = KNOWN_MINERS[Math.floor(Math.random() * KNOWN_MINERS.length)];
+  const gasVal = Math.floor(Math.random() * 16000000) + 13500000;
+  const gasPct = ((gasVal / 30000000) * 100).toFixed(1);
+  const gasUsedStr = `${gasVal.toLocaleString('en-US')} (${gasPct}%)`;
+  const sizeStr = `${(gasVal / 185000).toFixed(1)} KB`;
+  const txCount = Math.floor(Math.random() * 220) + 120;
+  const reward = `${(2.0 + Math.random() * 0.75).toFixed(2)} ETH`;
+
+  return {
+    number: nextNumber,
+    hash: randomHash,
+    parentHash: previousBlock.hash,
+    timestamp: 'Just now',
+    txCount,
+    miner,
+    gasUsed: gasUsedStr,
+    gasLimit: '30,000,000',
+    size: sizeStr,
+    reward,
+    status: 'latest',
+  };
+}

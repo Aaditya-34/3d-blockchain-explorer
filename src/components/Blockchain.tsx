@@ -9,26 +9,48 @@ interface BlockchainProps {
   onSelectBlock: (block: BlockData) => void;
 }
 
-const BLOCK_SPACING = 3.6;
-const BLOCK_HALF_WIDTH = 0.8;
+import { BLOCK_SPACING, BLOCK_HALF_WIDTH } from '../utils/chainLayout';
 
 export function Blockchain({
   blocks,
   selectedBlock,
   onSelectBlock,
 }: BlockchainProps) {
-  // Pre-calculate positions for all blocks
+  // Separate active and exiting blocks so active chain stays centered
+  const activeBlocks = useMemo(
+    () => blocks.filter((b) => !b.isExiting),
+    [blocks]
+  );
+
+  // Map each block (including exiting) to its 3D position
   const blockPositions = useMemo(() => {
-    const total = blocks.length;
-    return blocks.map((_, i) => {
-      const x = (i - (total - 1) / 2) * BLOCK_SPACING;
+    const totalActive = Math.max(1, activeBlocks.length);
+    let activeCounter = 0;
+
+    return blocks.map((block) => {
+      if (block.isExiting) {
+        // Position exiting block just to the left of the chain
+        const x = (-1 - (totalActive - 1) / 2) * BLOCK_SPACING;
+        return [x, 0, 0] as [number, number, number];
+      }
+      const x = (activeCounter - (totalActive - 1) / 2) * BLOCK_SPACING;
+      activeCounter++;
       return [x, 0, 0] as [number, number, number];
     });
-  }, [blocks]);
+  }, [blocks, activeBlocks]);
+
+  // Pre-calculate positions for active connection lines
+  const activePositions = useMemo(() => {
+    const totalActive = Math.max(1, activeBlocks.length);
+    return activeBlocks.map((_, i) => {
+      const x = (i - (totalActive - 1) / 2) * BLOCK_SPACING;
+      return [x, 0, 0] as [number, number, number];
+    });
+  }, [activeBlocks]);
 
   return (
     <group position={[0, 0, 0]}>
-      {/* 10 Glowing Blocks */}
+      {/* Glowing Blocks in Chain */}
       {blocks.map((block, i) => (
         <Block
           key={block.number}
@@ -40,14 +62,15 @@ export function Blockchain({
         />
       ))}
 
-      {/* Thin Light Lines connecting adjacent blocks */}
-      {blocks.slice(0, -1).map((_, i) => {
-        const startX = blockPositions[i][0] + BLOCK_HALF_WIDTH;
-        const endX = blockPositions[i + 1][0] - BLOCK_HALF_WIDTH;
+      {/* Thin Light Lines connecting adjacent active blocks */}
+      {activeBlocks.slice(0, -1).map((block, i) => {
+        const nextBlock = activeBlocks[i + 1];
+        const startX = activePositions[i][0] + BLOCK_HALF_WIDTH;
+        const endX = activePositions[i + 1][0] - BLOCK_HALF_WIDTH;
 
         return (
           <ConnectionLine
-            key={`conn-${i}`}
+            key={`conn-${block.number}-${nextBlock.number}`}
             start={[startX, 0, 0]}
             end={[endX, 0, 0]}
             index={i}

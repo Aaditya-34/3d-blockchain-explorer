@@ -5,9 +5,15 @@ interface HUDProps {
   blocks: BlockData[];
   selectedBlock: BlockData | null;
   onSelectBlock: (block: BlockData | null) => void;
+  isLivePulsing: boolean;
 }
 
-export function HUD({ blocks, selectedBlock, onSelectBlock }: HUDProps) {
+export function HUD({
+  blocks,
+  selectedBlock,
+  onSelectBlock,
+  isLivePulsing,
+}: HUDProps) {
   const [copied, setCopied] = useState(false);
 
   const copyHash = (hash: string) => {
@@ -16,7 +22,11 @@ export function HUD({ blocks, selectedBlock, onSelectBlock }: HUDProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const latestBlock = blocks[blocks.length - 1];
+  const activeBlocks = blocks.filter((b) => !b.isExiting);
+  const latestBlock = activeBlocks[activeBlocks.length - 1];
+  const currentBlock = selectedBlock
+    ? blocks.find((b) => b.number === selectedBlock.number && !b.isExiting) ?? null
+    : null;
 
   return (
     <div className="hud-overlay">
@@ -30,25 +40,36 @@ export function HUD({ blocks, selectedBlock, onSelectBlock }: HUDProps) {
           </div>
         </div>
 
-        <div className="network-pill">
-          <span className="live-indicator" />
-          <span className="network-name">MAINNET</span>
-          <span className="divider">|</span>
-          <span className="metric">10 Blocks Synced</span>
-          <span className="divider">|</span>
-          <span className="metric">Latest: #{latestBlock?.number}</span>
+        <div className="hud-header-right">
+          {/* Pulsing LIVE Pill */}
+          <div
+            className={`live-pill ${isLivePulsing ? 'live-pill-pulsing' : ''}`}
+            title="Consensus feed is live (minting every 5s)"
+          >
+            <span className="live-pill-dot" />
+            <span className="live-pill-text">LIVE</span>
+          </div>
+
+          <div className="network-pill">
+            <span className="live-indicator" />
+            <span className="network-name">MAINNET</span>
+            <span className="divider">|</span>
+            <span className="metric">{activeBlocks.length} Blocks Synced</span>
+            <span className="divider">|</span>
+            <span className="metric">Latest: #{latestBlock?.number}</span>
+          </div>
         </div>
       </header>
 
       {/* Block Inspector Sidebar / Card */}
-      {selectedBlock && (
+      {currentBlock && (
         <aside className="block-inspector">
           <div className="inspector-header">
             <div>
-              <span className={`status-badge status-${selectedBlock.status}`}>
-                {selectedBlock.status.toUpperCase()}
+              <span className={`status-badge status-${currentBlock.status}`}>
+                {currentBlock.status.toUpperCase()}
               </span>
-              <h2 className="inspector-title">Block #{selectedBlock.number}</h2>
+              <h2 className="inspector-title">Block #{currentBlock.number}</h2>
             </div>
             <button
               className="close-button"
@@ -62,25 +83,25 @@ export function HUD({ blocks, selectedBlock, onSelectBlock }: HUDProps) {
           <div className="inspector-grid">
             <div className="info-group">
               <label>Timestamp</label>
-              <div className="info-value">{selectedBlock.timestamp}</div>
+              <div className="info-value">{currentBlock.timestamp}</div>
             </div>
 
             <div className="info-group">
               <label>Transactions</label>
               <div className="info-value highlight-cyan">
-                {selectedBlock.txCount} transactions
+                {currentBlock.txCount} transactions
               </div>
             </div>
 
             <div className="info-group">
               <label>Block Hash</label>
               <div className="hash-row">
-                <span className="hash-code" title={selectedBlock.hash}>
-                  {selectedBlock.hash.slice(0, 14)}...{selectedBlock.hash.slice(-10)}
+                <span className="hash-code" title={currentBlock.hash}>
+                  {currentBlock.hash.slice(0, 14)}...{currentBlock.hash.slice(-10)}
                 </span>
                 <button
                   className="copy-btn"
-                  onClick={() => copyHash(selectedBlock.hash)}
+                  onClick={() => copyHash(currentBlock.hash)}
                 >
                   {copied ? '✓ Copied' : 'Copy'}
                 </button>
@@ -89,24 +110,24 @@ export function HUD({ blocks, selectedBlock, onSelectBlock }: HUDProps) {
 
             <div className="info-group">
               <label>Parent Hash</label>
-              <div className="hash-code faint" title={selectedBlock.parentHash}>
-                {selectedBlock.parentHash.slice(0, 14)}...{selectedBlock.parentHash.slice(-10)}
+              <div className="hash-code faint" title={currentBlock.parentHash}>
+                {currentBlock.parentHash.slice(0, 14)}...{currentBlock.parentHash.slice(-10)}
               </div>
             </div>
 
             <div className="info-group">
               <label>Miner / Validator</label>
-              <div className="hash-code">{selectedBlock.miner}</div>
+              <div className="hash-code">{currentBlock.miner}</div>
             </div>
 
             <div className="info-group">
               <label>Gas Used</label>
-              <div className="info-value">{selectedBlock.gasUsed}</div>
+              <div className="info-value">{currentBlock.gasUsed}</div>
               <div className="progress-bar-bg">
                 <div
                   className="progress-bar-fill"
                   style={{
-                    width: selectedBlock.gasUsed.split('(')[1]?.replace('%)', '') || '50%',
+                    width: currentBlock.gasUsed.split('(')[1]?.replace('%)', '') || '50%',
                   }}
                 />
               </div>
@@ -115,11 +136,11 @@ export function HUD({ blocks, selectedBlock, onSelectBlock }: HUDProps) {
             <div className="info-row-dual">
               <div className="info-group">
                 <label>Size</label>
-                <div className="info-value">{selectedBlock.size}</div>
+                <div className="info-value">{currentBlock.size}</div>
               </div>
               <div className="info-group">
                 <label>Block Reward</label>
-                <div className="info-value highlight-pink">{selectedBlock.reward}</div>
+                <div className="info-value highlight-pink">{currentBlock.reward}</div>
               </div>
             </div>
           </div>
@@ -128,20 +149,20 @@ export function HUD({ blocks, selectedBlock, onSelectBlock }: HUDProps) {
           <div className="inspector-footer">
             <button
               className="nav-btn"
-              disabled={selectedBlock.number === blocks[0].number}
+              disabled={currentBlock.number === activeBlocks[0]?.number}
               onClick={() => {
-                const idx = blocks.findIndex((b) => b.number === selectedBlock.number);
-                if (idx > 0) onSelectBlock(blocks[idx - 1]);
+                const idx = activeBlocks.findIndex((b) => b.number === currentBlock.number);
+                if (idx > 0) onSelectBlock(activeBlocks[idx - 1]);
               }}
             >
               ← Previous
             </button>
             <button
               className="nav-btn"
-              disabled={selectedBlock.number === blocks[blocks.length - 1].number}
+              disabled={currentBlock.number === activeBlocks[activeBlocks.length - 1]?.number}
               onClick={() => {
-                const idx = blocks.findIndex((b) => b.number === selectedBlock.number);
-                if (idx < blocks.length - 1) onSelectBlock(blocks[idx + 1]);
+                const idx = activeBlocks.findIndex((b) => b.number === currentBlock.number);
+                if (idx < activeBlocks.length - 1) onSelectBlock(activeBlocks[idx + 1]);
               }}
             >
               Next →
@@ -160,6 +181,8 @@ export function HUD({ blocks, selectedBlock, onSelectBlock }: HUDProps) {
           <span className="kbd">Scroll</span> Zoom
           <span className="dot">•</span>
           <span className="kbd">Click Block</span> Inspect
+          <span className="dot">•</span>
+          <span className="kbd">Esc</span> Overview
         </div>
       </footer>
     </div>

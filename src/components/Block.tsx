@@ -24,7 +24,9 @@ export function Block({
   const meshRef = useRef<THREE.Mesh>(null);
   const coreRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.MeshStandardMaterial>(null);
+  const pointLightRef = useRef<THREE.PointLight>(null);
 
+  const isMountedRef = useRef(false);
   const [hovered, setHovered] = useState(false);
 
   const isLatest = block.status === 'latest';
@@ -32,38 +34,125 @@ export function Block({
   const edgeColor = isLatest ? '#f43f5e' : '#38bdf8';
   const baseColor = isLatest ? '#2b0922' : '#041628';
 
-  // Initial GSAP Entrance Animation
+  const posX = position[0];
+  const posY = position[1];
+  const posZ = position[2];
+  const blockNumber = block.number;
+  const isExiting = block.isExiting;
+
+  // Mount Animation: Staggered for initial blocks, explosive scale-in and glow for minted blocks
   useEffect(() => {
     if (!groupRef.current) return;
+    if (isMountedRef.current) return;
+    isMountedRef.current = true;
 
-    gsap.fromTo(
-      groupRef.current.scale,
-      { x: 0, y: 0, z: 0 },
-      {
-        x: 1,
-        y: 1,
-        z: 1,
-        duration: 0.9,
-        delay: index * 0.08,
-        ease: 'back.out(1.6)',
-      }
-    );
+    // Newly minted block arriving live
+    if (isLatest && blockNumber > 21849199) {
+      groupRef.current.position.set(posX, posY, posZ);
+      gsap.fromTo(
+        groupRef.current.scale,
+        { x: 0, y: 0, z: 0 },
+        {
+          x: 1,
+          y: 1,
+          z: 1,
+          duration: 0.85,
+          ease: 'back.out(1.8)',
+        }
+      );
 
-    gsap.fromTo(
-      groupRef.current.position,
-      { y: position[1] - 4 },
-      {
-        y: position[1],
-        duration: 0.9,
-        delay: index * 0.08,
-        ease: 'power3.out',
+      if (materialRef.current) {
+        gsap.fromTo(
+          materialRef.current,
+          { emissiveIntensity: 2.8 },
+          {
+            emissiveIntensity: 0.7,
+            duration: 1.4,
+            ease: 'power2.out',
+          }
+        );
       }
-    );
-  }, [index, position]);
+
+      if (pointLightRef.current) {
+        gsap.fromTo(
+          pointLightRef.current,
+          { intensity: 7.0 },
+          {
+            intensity: 2.2,
+            duration: 1.4,
+            ease: 'power2.out',
+          }
+        );
+      }
+    } else {
+      // Initial page load entrance
+      gsap.fromTo(
+        groupRef.current.scale,
+        { x: 0, y: 0, z: 0 },
+        {
+          x: 1,
+          y: 1,
+          z: 1,
+          duration: 0.9,
+          delay: index * 0.08,
+          ease: 'back.out(1.6)',
+        }
+      );
+
+      gsap.fromTo(
+        groupRef.current.position,
+        { y: posY - 4 },
+        {
+          y: posY,
+          duration: 0.9,
+          delay: index * 0.08,
+          ease: 'power3.out',
+        }
+      );
+    }
+  }, [blockNumber, index, isLatest, posX, posY, posZ]);
+
+  // Smooth position shift when chain moves
+  useEffect(() => {
+    if (!groupRef.current || !isMountedRef.current) return;
+
+    gsap.to(groupRef.current.position, {
+      x: posX,
+      duration: 0.7,
+      ease: 'power2.out',
+    });
+  }, [posX]);
+
+  // Fade out and shrink when block is exiting the 15-block limit
+  useEffect(() => {
+    if (!isExiting || !groupRef.current) return;
+
+    gsap.to(groupRef.current.scale, {
+      x: 0.01,
+      y: 0.01,
+      z: 0.01,
+      duration: 0.7,
+      ease: 'power2.in',
+    });
+
+    gsap.to(groupRef.current.position, {
+      x: posX - 2.5,
+      duration: 0.7,
+      ease: 'power2.in',
+    });
+
+    if (materialRef.current) {
+      gsap.to(materialRef.current, {
+        opacity: 0,
+        duration: 0.6,
+        ease: 'power2.in',
+      });
+    }
+  }, [isExiting, posX]);
 
   // GSAP Hover and Selection Transitions
   useEffect(() => {
-    if (!groupRef.current) return;
+    if (!groupRef.current || block.isExiting) return;
 
     const targetY = isSelected ? position[1] + 0.5 : hovered ? position[1] + 0.3 : position[1];
     const targetScale = isSelected ? 1.15 : hovered ? 1.08 : 1.0;
@@ -83,13 +172,13 @@ export function Block({
     });
 
     if (materialRef.current) {
-      const targetEmissiveIntensity = isSelected ? 0.9 : hovered ? 0.7 : 0.4;
+      const targetEmissiveIntensity = isSelected ? 0.9 : hovered ? 0.7 : (isLatest ? 0.65 : 0.4);
       gsap.to(materialRef.current, {
         emissiveIntensity: targetEmissiveIntensity,
         duration: 0.3,
       });
     }
-  }, [hovered, isSelected, position]);
+  }, [hovered, isSelected, position, block.isExiting, isLatest]);
 
   // Subtle continuous rotation for the cryptographic inner core
   useFrame((_, delta) => {
@@ -151,6 +240,7 @@ export function Block({
 
       {/* Point Light emitted from within the cube */}
       <pointLight
+        ref={pointLightRef}
         color={primaryGlow}
         intensity={isSelected ? 3.5 : hovered ? 2.5 : 1.2}
         distance={4.5}

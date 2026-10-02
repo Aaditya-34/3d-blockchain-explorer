@@ -7,7 +7,7 @@ import type { BlockData } from '../data/mockBlocks';
 interface SceneProps {
   blocks: BlockData[];
   selectedBlock: BlockData | null;
-  onSelectBlock: (block: BlockData) => void;
+  onSelectBlock: (block: BlockData | null) => void;
 }
 
 export function Scene({ blocks, selectedBlock, onSelectBlock }: SceneProps) {
@@ -16,7 +16,7 @@ export function Scene({ blocks, selectedBlock, onSelectBlock }: SceneProps) {
       <Canvas
         camera={{ position: [0, 4, 25], fov: 45 }}
         gl={{ antialias: true }}
-        onPointerMissed={() => onSelectBlock(null as unknown as BlockData)}
+        onPointerMissed={() => onSelectBlock(null)}
       >
         {/* Deep dark space background */}
         <color attach="background" args={['#02040a']} />
@@ -30,21 +30,21 @@ export function Scene({ blocks, selectedBlock, onSelectBlock }: SceneProps) {
         <directionalLight position={[-10, -10, -10]} intensity={0.3} color="#38bdf8" />
 
         {/* Ambient point lights accenting the chain ends */}
-        <pointLight position={[-16, 4, 6]} color="#00f5ff" intensity={2} distance={25} />
-        <pointLight position={[16, 4, 6]} color="#f43f5e" intensity={2} distance={25} />
+        <pointLight position={[-24, 4, 6]} color="#00f5ff" intensity={2.2} distance={35} />
+        <pointLight position={[24, 4, 6]} color="#f43f5e" intensity={2.2} distance={35} />
 
         {/* Subtle stars */}
         <StarsBackground />
 
-        {/* 10 horizontal blocks chain */}
+        {/* Dynamic Horizontal Blockchain */}
         <Blockchain
           blocks={blocks}
           selectedBlock={selectedBlock}
           onSelectBlock={onSelectBlock}
         />
 
-        {/* Smooth damping OrbitControls */}
-        <Controls />
+        {/* Smooth GSAP-driven OrbitControls */}
+        <Controls selectedBlock={selectedBlock} blocks={blocks} />
       </Canvas>
     </div>
   );
