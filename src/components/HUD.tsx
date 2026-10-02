@@ -9,6 +9,8 @@ interface HUDProps {
   isLivePulsing: boolean;
   cinematicMode: boolean;
   onToggleCinematic: () => void;
+  followLatestBlock: boolean;
+  onToggleFollowLatest: () => void;
   toast: ToastData | null;
   onDismissToast: () => void;
 }
@@ -20,6 +22,8 @@ export function HUD({
   isLivePulsing,
   cinematicMode,
   onToggleCinematic,
+  followLatestBlock,
+  onToggleFollowLatest,
   toast,
   onDismissToast,
 }: HUDProps) {
@@ -50,6 +54,23 @@ export function HUD({
         </div>
 
         <div className="hud-header-right">
+          {/* Follow Latest Block Toggle (default OFF, auto-disables on drag/pan/zoom) */}
+          <button
+            className={`follow-toggle-btn ${followLatestBlock ? 'active' : ''}`}
+            onClick={onToggleFollowLatest}
+            title={
+              followLatestBlock
+                ? 'Follow Latest Block: ON (smoothly follows newest block; auto-disables on drag/pan/zoom)'
+                : 'Follow Latest Block: OFF (camera is completely free)'
+            }
+          >
+            <span className="follow-icon">🎯</span>
+            <span className="follow-label">FOLLOW LATEST</span>
+            <span className={`follow-badge ${followLatestBlock ? 'badge-on' : 'badge-off'}`}>
+              {followLatestBlock ? 'ON' : 'OFF'}
+            </span>
+          </button>
+
           {/* Cinematic Mode Toggle */}
           <button
             className={`cinematic-toggle-btn ${cinematicMode ? 'active' : ''}`}

@@ -17,6 +17,7 @@ export default function App() {
   const [selectedBlock, setSelectedBlock] = useState<BlockData | null>(null);
   const [isLivePulsing, setIsLivePulsing] = useState(false);
   const [cinematicMode, setCinematicMode] = useState(true);
+  const [followLatestBlock, setFollowLatestBlock] = useState(false);
   const [formingStartTime, setFormingStartTime] = useState<number>(0);
   const [formingBlockNumber, setFormingBlockNumber] = useState<number | null>(null);
   const [toast, setToast] = useState<ToastData | null>(null);
@@ -116,23 +117,34 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  const handleSelectBlock = (block: BlockData | null) => {
+    if (block) {
+      setFollowLatestBlock(false);
+    }
+    setSelectedBlock(block);
+  };
+
   return (
     <main className="app-container">
       <Scene
         blocks={blocks}
         selectedBlock={selectedBlock}
-        onSelectBlock={setSelectedBlock}
+        onSelectBlock={handleSelectBlock}
         cinematicMode={cinematicMode}
         formingStartTime={formingStartTime}
         formingBlockNumber={formingBlockNumber}
+        followLatestBlock={followLatestBlock}
+        onDisableFollowLatest={() => setFollowLatestBlock(false)}
       />
       <HUD
         blocks={blocks}
         selectedBlock={selectedBlock}
-        onSelectBlock={setSelectedBlock}
+        onSelectBlock={handleSelectBlock}
         isLivePulsing={isLivePulsing}
         cinematicMode={cinematicMode}
         onToggleCinematic={() => setCinematicMode((prev) => !prev)}
+        followLatestBlock={followLatestBlock}
+        onToggleFollowLatest={() => setFollowLatestBlock((prev) => !prev)}
         toast={toast}
         onDismissToast={() => setToast(null)}
       />

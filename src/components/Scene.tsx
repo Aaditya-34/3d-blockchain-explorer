@@ -16,6 +16,8 @@ interface SceneProps {
   cinematicMode: boolean;
   formingStartTime: number;
   formingBlockNumber: number | null;
+  followLatestBlock: boolean;
+  onDisableFollowLatest: () => void;
 }
 
 export function Scene({
@@ -25,6 +27,8 @@ export function Scene({
   cinematicMode,
   formingStartTime,
   formingBlockNumber,
+  followLatestBlock,
+  onDisableFollowLatest,
 }: SceneProps) {
   const bloomRef = useRef<BloomEffect>(null);
   const [composerEnabled, setComposerEnabled] = useState(false);
@@ -90,12 +94,12 @@ export function Scene({
           cinematicMode={cinematicMode}
         />
 
-        {/* Smooth GSAP-driven OrbitControls with subtle camera nudge */}
+        {/* OrbitControls (User input, block click fly-to, Escape return, Follow latest block) */}
         <Controls
           selectedBlock={selectedBlock}
           blocks={blocks}
-          formingStartTime={formingStartTime}
-          cinematicMode={cinematicMode}
+          followLatestBlock={followLatestBlock}
+          onDisableFollowLatest={onDisableFollowLatest}
         />
 
         {/* Stage 4: Short Impact Bloom Flash (enabled only while the effect plays) */}

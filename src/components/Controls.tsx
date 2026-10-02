@@ -9,46 +9,56 @@ import { getBlockPosition } from '../utils/chainLayout';
 interface ControlsProps {
   selectedBlock: BlockData | null;
   blocks: BlockData[];
-  formingStartTime?: number;
-  cinematicMode?: boolean;
+  followLatestBlock: boolean;
+  onDisableFollowLatest: () => void;
 }
 
 export function Controls({
   selectedBlock,
   blocks,
-  formingStartTime = 0,
-  cinematicMode = true,
+  followLatestBlock,
+  onDisableFollowLatest,
 }: ControlsProps) {
   const controlsRef = useRef<OrbitControlsImpl>(null);
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
   const isFirstRender = useRef(true);
   const prevBlockNumberRef = useRef<number | null>(null);
-  const isUserInteractingRef = useRef(false);
+  const lastFollowedNumberRef = useRef<number | null>(null);
 
-  // Track user interaction to prevent any camera nudges while user is controlling the camera
+  // Auto-disable "Follow latest block" the moment the user interacts (drag, pan, or zoom)
   useEffect(() => {
     const controls = controlsRef.current;
     if (!controls) return;
+    const dom = gl.domElement;
 
-    const onStart = () => {
-      isUserInteractingRef.current = true;
-      gsap.killTweensOf(camera.position);
-      gsap.killTweensOf(controls.target);
+    const handleUserInteraction = () => {
+      if (followLatestBlock) {
+        gsap.killTweensOf(camera.position);
+        gsap.killTweensOf(controls.target);
+        onDisableFollowLatest();
+      }
     };
 
-    const onEnd = () => {
-      isUserInteractingRef.current = false;
-    };
-
-    controls.addEventListener('start', onStart);
-    controls.addEventListener('end', onEnd);
+    controls.addEventListener('start', handleUserInteraction);
+    dom.addEventListener('pointerdown', handleUserInteraction);
+    dom.addEventListener('wheel', handleUserInteraction, { passive: true });
 
     return () => {
-      controls.removeEventListener('start', onStart);
-      controls.removeEventListener('end', onEnd);
+      controls.removeEventListener('start', handleUserInteraction);
+      dom.removeEventListener('pointerdown', handleUserInteraction);
+      dom.removeEventListener('wheel', handleUserInteraction);
     };
-  }, [camera]);
+  }, [followLatestBlock, onDisableFollowLatest, camera, gl]);
 
+  // Reset follow tracker when toggled off
+  useEffect(() => {
+    if (!followLatestBlock) {
+      lastFollowedNumberRef.current = null;
+    }
+  }, [followLatestBlock]);
+
+  // Handle selected block inspection and overview return ONLY
+  // No minting or chain shift state update is allowed to move the camera!
   useEffect(() => {
     // Avoid re-animating on mount when nothing is selected
     if (isFirstRender.current) {
@@ -62,14 +72,15 @@ export function Controls({
     const prevNumber = prevBlockNumberRef.current;
     const currentNumber = selectedBlock?.number ?? null;
 
-    // If both are null, don't trigger camera moves on routine block ticks
-    if (prevNumber === null && currentNumber === null) {
+    // If selectedBlock hasn't changed (e.g. minting, chain shift, age update), DO NOT move the camera!
+    // The camera remains fixed in world space.
+    if (prevNumber === currentNumber) {
       return;
     }
 
     prevBlockNumberRef.current = currentNumber;
 
-    // Disable controls during camera animation to prevent fighting
+    // Disable controls during camera transition animation to prevent fighting
     controls.enabled = false;
     gsap.killTweensOf(camera.position);
     gsap.killTweensOf(controls.target);
@@ -90,24 +101,20 @@ export function Controls({
       const targetLookY = by + 0.35;
       const targetLookZ = bz;
 
-      const isShiftOnly = prevNumber === currentNumber;
-      const duration = isShiftOnly ? 0.7 : 1.15;
-      const ease = isShiftOnly ? 'power2.out' : 'power3.inOut';
-
       gsap.to(camera.position, {
         x: targetCamX,
         y: targetCamY,
         z: targetCamZ,
-        duration,
-        ease,
+        duration: 1.15,
+        ease: 'power3.inOut',
       });
 
       gsap.to(controls.target, {
         x: targetLookX,
         y: targetLookY,
         z: targetLookZ,
-        duration,
-        ease,
+        duration: 1.15,
+        ease: 'power3.inOut',
         onUpdate: () => {
           camera.lookAt(controls.target);
         },
@@ -117,7 +124,7 @@ export function Controls({
         },
       });
     } else {
-      // Smooth return to overview
+      // Smooth return to overview when drawer is closed or Escape is pressed
       gsap.to(camera.position, {
         x: 0,
         y: 4,
@@ -148,10 +155,9 @@ export function Controls({
     };
   }, [selectedBlock, blocks, camera]);
 
-  // Subtle camera nudge toward the new block during mint sequence
+  // Smoothly follow the newest block ONLY when "Follow latest block" toggle is ON and no block is inspected
   useEffect(() => {
-    // Only nudge when user is NOT inspecting a block and NOT actively manipulating controls
-    if (!formingStartTime || selectedBlock || isUserInteractingRef.current) return;
+    if (!followLatestBlock || selectedBlock) return;
 
     const controls = controlsRef.current;
     if (!controls) return;
@@ -159,77 +165,52 @@ export function Controls({
     const activeBlocks = blocks.filter((b) => !b.isExiting);
     if (activeBlocks.length === 0) return;
     const totalActive = Math.max(1, activeBlocks.length);
-    const [latestX] = getBlockPosition(totalActive - 1, totalActive);
+    const latestBlock = activeBlocks[totalActive - 1];
 
-    const nudgeDuration = cinematicMode ? 1.4 : 0.45;
-    const returnDuration = cinematicMode ? 1.4 : 0.45;
+    // Only animate if the latest block changed or if follow was just enabled
+    if (lastFollowedNumberRef.current === latestBlock.number && lastFollowedNumberRef.current !== null) {
+      return;
+    }
+    lastFollowedNumberRef.current = latestBlock.number;
 
-    // Subtle offset toward new block
-    const nudgeCamX = latestX * 0.1;
-    const nudgeCamY = 4.2;
-    const nudgeCamZ = 24.5;
-    const nudgeTargetX = latestX * 0.07;
+    const [latestX, latestY, latestZ] = getBlockPosition(totalActive - 1, totalActive);
 
-    const tl = gsap.timeline({
+    const targetCamX = latestX + 0.5;
+    const targetCamY = latestY + 2.0;
+    const targetCamZ = latestZ + 14.0;
+
+    const targetLookX = latestX;
+    const targetLookY = latestY + 0.3;
+    const targetLookZ = latestZ;
+
+    gsap.killTweensOf(camera.position);
+    gsap.killTweensOf(controls.target);
+
+    gsap.to(camera.position, {
+      x: targetCamX,
+      y: targetCamY,
+      z: targetCamZ,
+      duration: 1.0,
+      ease: 'power2.out',
+    });
+
+    gsap.to(controls.target, {
+      x: targetLookX,
+      y: targetLookY,
+      z: targetLookZ,
+      duration: 1.0,
+      ease: 'power2.out',
       onUpdate: () => {
-        if (!isUserInteractingRef.current) {
-          camera.lookAt(controls.target);
-          controls.update();
-        }
+        camera.lookAt(controls.target);
+        controls.update();
       },
     });
 
-    tl.to(
-      camera.position,
-      {
-        x: nudgeCamX,
-        y: nudgeCamY,
-        z: nudgeCamZ,
-        duration: nudgeDuration,
-        ease: 'power2.out',
-      },
-      0
-    );
-
-    tl.to(
-      controls.target,
-      {
-        x: nudgeTargetX,
-        duration: nudgeDuration,
-        ease: 'power2.out',
-      },
-      0
-    );
-
-    // Return to centered overview
-    tl.to(
-      camera.position,
-      {
-        x: 0,
-        y: 4,
-        z: 25,
-        duration: returnDuration,
-        ease: 'power2.inOut',
-      },
-      nudgeDuration
-    );
-
-    tl.to(
-      controls.target,
-      {
-        x: 0,
-        y: 0,
-        z: 0,
-        duration: returnDuration,
-        ease: 'power2.inOut',
-      },
-      nudgeDuration
-    );
-
     return () => {
-      tl.kill();
+      gsap.killTweensOf(camera.position);
+      if (controls) gsap.killTweensOf(controls.target);
     };
-  }, [formingStartTime, selectedBlock, blocks, camera, cinematicMode]);
+  }, [followLatestBlock, selectedBlock, blocks, camera]);
 
   return (
     <OrbitControls
