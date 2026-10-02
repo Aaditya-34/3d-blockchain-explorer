@@ -1,32 +1,104 @@
-# React + TypeScript + Vite
+# Nebula // 3D Blockchain Explorer
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+> An interactive, real-time 3D horizontal blockchain consensus visualizer built with React Three Fiber, Three.js, and GSAP.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Preview
 
-## React Compiler
+<!-- Replace with actual preview screenshot -->
+![Nebula 3D Blockchain Explorer Preview](./public/preview.png)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+*Preview: 3D blockchain visualizer featuring horizontal chain consensus, camera fly-to framing, dynamic block minting, and cyberpunk HUD.*
 
-## Expanding the Oxlint configuration
+---
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## Features
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
+- **Interactive 3D Chain**: Renders a horizontal blockchain suspended in a cosmic deep-space environment with ambient stars, atmospheric depth fog, and dynamic cyber edge lighting.
+- **Click-to-Inspect with Camera Fly-To**: Clicking any block smoothly animates both the camera position and `OrbitControls` target using GSAP (`power3.inOut`) to frame the selected block, with user controls disabled during transition to avoid animation conflicts.
+- **Smooth Overview Return**: Closing the inspector drawer via the close button (✕), clicking empty space, or pressing the **Escape** key smoothly glides the camera back to the wide overview.
+- **Live Block Minting Every 5s**: Automatically mints new blocks on a 5-second interval featuring a bouncy scale-in (`back.out`) and an explosive neon glow bloom, while shifting existing blocks to keep the newest block at the front.
+- **Dynamic 15-Block Window**: The chain dynamically grows from 10 up to 15 blocks. Once 15 blocks are reached, the oldest block fades out smoothly (scaling to zero and fading opacity) before being pruned.
+- **Parent-Hash Linking**: Every newly minted block cryptographically links to the previous block's exact hash via `parentHash`, preserving consensus integrity across the chain.
+- **Glassmorphic Cyber HUD**: High-tech heads-up display overlay featuring:
+  - **Pulsing "LIVE" Pill**: Glassmorphic status badge that ripples and pulses upon block arrival.
+  - **Dynamic Metrics**: Live count of active synchronized blocks and current block height.
+  - **Block Inspector**: Detailed breakdown of timestamps, transaction counts, block hash, parent hash, validator address, gas usage progress bar, and block reward.
+  - **Quick-Step Navigation**: Step backwards and forwards between adjacent blocks with smooth camera glide transitions.
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+---
+
+## Tech Stack
+
+| Technology | Purpose |
+|---|---|
+| **React 19** | Component architecture & reactive UI state |
+| **TypeScript** | Type-safe models, props, and Three.js geometry types |
+| **Vite** | Lightning-fast development server & production bundler |
+| **React Three Fiber (R3F)** | Declarative Three.js scene graph in React |
+| **@react-three/drei** | Camera controls, 3D text typography, stars background, and wireframe edges |
+| **Three.js** | Core WebGL 3D rendering engine, shaders, and geometry |
+| **GSAP (GreenSock)** | Smooth camera transitions, block scale-in, glow flash, and chain shifting |
+
+---
+
+## Controls
+
+| Action | Control |
+|---|---|
+| **Rotate Camera** | Left Click + Drag |
+| **Pan Camera** | Right Click + Drag |
+| **Zoom In / Out** | Scroll Wheel / Pinch |
+| **Inspect Block** | Left Click on any 3D Block |
+| **Return to Overview** | Press <kbd>Esc</kbd> or Click <kbd>✕</kbd> in Drawer |
+| **Glide to Adjacent Block** | Click **← Previous** or **Next →** in Inspector |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+ installed on your machine
+- npm, pnpm, or yarn
+
+### Installation & Run
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/Aaditya-34/3d-blockchain-explorer.git
+   cd 3d-blockchain-explorer
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Start the local development server:**
+   ```bash
+   npm run dev
+   ```
+   Open your browser and navigate to `http://localhost:5173/`.
+
+4. **Build for production:**
+   ```bash
+   npm run build
+   ```
+
+---
+
+## Roadmap
+
+- [ ] **Transaction Particles**: Visualizing individual transaction data particles streaming into blocks as they are mined.
+- [ ] **Real Chain Data**: Connecting to live Ethereum Mainnet or Sepolia testnet via Alchemy/Infura RPC WebSocket feeds.
+- [ ] **Search & Filter**: Direct search bar to find blocks by block height, hash, or miner address.
+- [ ] **Mobile & Touch Optimization**: Responsive HUD drawer layout and multi-touch gestures for mobile screens.
+- [ ] **Cloud Deployment**: One-click deployment configuration for Vercel and Cloudflare Pages.
+
+---
+
+## License
+
+MIT © [Aaditya-34](https://github.com/Aaditya-34)
