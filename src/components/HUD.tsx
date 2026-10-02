@@ -11,6 +11,10 @@ interface HUDProps {
   onToggleCinematic: () => void;
   followLatestBlock: boolean;
   onToggleFollowLatest: () => void;
+  dataMode: 'live' | 'demo';
+  onToggleDataMode: () => void;
+  rpcStatusMessage: string | null;
+  onDismissRpcStatus: () => void;
   toast: ToastData | null;
   onDismissToast: () => void;
 }
@@ -24,6 +28,10 @@ export function HUD({
   onToggleCinematic,
   followLatestBlock,
   onToggleFollowLatest,
+  dataMode,
+  onToggleDataMode,
+  rpcStatusMessage,
+  onDismissRpcStatus,
   toast,
   onDismissToast,
 }: HUDProps) {
@@ -54,6 +62,22 @@ export function HUD({
         </div>
 
         <div className="hud-header-right">
+          {/* Data Mode Toggle: LIVE (Ethereum) vs DEMO (mock) */}
+          <button
+            className={`data-mode-toggle ${dataMode === 'live' ? 'mode-live' : 'mode-demo'}`}
+            onClick={onToggleDataMode}
+            title={
+              dataMode === 'live'
+                ? 'Connected to Ethereum Mainnet RPC. Click to switch to DEMO mode.'
+                : 'Running simulated DEMO blocks. Click to connect to real Ethereum Mainnet.'
+            }
+          >
+            <span className={`data-mode-dot ${dataMode === 'live' ? 'dot-live' : 'dot-demo'}`} />
+            <span className="data-mode-text">
+              {dataMode === 'live' ? 'LIVE (Ethereum)' : 'DEMO (mock)'}
+            </span>
+          </button>
+
           {/* Follow Latest Block Toggle (default OFF, auto-disables on drag/pan/zoom) */}
           <button
             className={`follow-toggle-btn ${followLatestBlock ? 'active' : ''}`}
@@ -87,22 +111,37 @@ export function HUD({
           {/* Pulsing LIVE Pill */}
           <div
             className={`live-pill ${isLivePulsing ? 'live-pill-pulsing' : ''}`}
-            title="Consensus feed is live (minting every 5s)"
+            title={dataMode === 'live' ? 'Consensus feed is live from Ethereum Mainnet' : 'Consensus feed is live in Demo mode (minting every 5s)'}
           >
             <span className="live-pill-dot" />
-            <span className="live-pill-text">LIVE</span>
+            <span className="live-pill-text">{dataMode === 'live' ? 'ETH' : 'DEMO'}</span>
           </div>
 
           <div className="network-pill">
-            <span className="live-indicator" />
-            <span className="network-name">MAINNET</span>
+            <span className={`live-indicator ${dataMode === 'live' ? 'indicator-eth' : ''}`} />
+            <span className="network-name">{dataMode === 'live' ? 'ETHEREUM' : 'SIMULATED'}</span>
             <span className="divider">|</span>
-            <span className="metric">{activeBlocks.length} Blocks Synced</span>
+            <span className="metric">{activeBlocks.length} Blocks</span>
             <span className="divider">|</span>
             <span className="metric">Latest: #{latestBlock?.number}</span>
           </div>
         </div>
       </header>
+
+      {/* RPC Warning / Status Message banner if RPC issues occur */}
+      {rpcStatusMessage && (
+        <div className="rpc-status-banner">
+          <span className="rpc-status-icon">⚠️</span>
+          <span className="rpc-status-msg">{rpcStatusMessage}</span>
+          <button
+            className="rpc-status-close"
+            onClick={onDismissRpcStatus}
+            aria-label="Dismiss RPC status"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Stage 6: Small HUD Toast Notification */}
       {toast && (

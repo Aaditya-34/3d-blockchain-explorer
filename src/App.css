@@ -664,3 +664,109 @@
   }
 }
 
+/* Data Mode Toggle (LIVE vs DEMO) */
+.data-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  border-radius: 9999px;
+  color: #34d399;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 12px rgba(16, 185, 129, 0.15);
+}
+
+.data-mode-toggle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25);
+}
+
+.data-mode-toggle.mode-live {
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(52, 211, 153, 0.5);
+  color: #34d399;
+}
+
+.data-mode-toggle.mode-demo {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(251, 191, 36, 0.5);
+  color: #fbbf24;
+  box-shadow: 0 2px 12px rgba(245, 158, 11, 0.15);
+}
+
+.data-mode-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.data-mode-dot.dot-live {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulse 2s infinite ease-in-out;
+}
+
+.data-mode-dot.dot-demo {
+  background: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+}
+
+.live-indicator.indicator-eth {
+  background: #627eea;
+  box-shadow: 0 0 8px #627eea;
+}
+
+/* RPC Warning / Status Banner */
+.rpc-status-banner {
+  position: absolute;
+  top: 76px;
+  right: 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(245, 158, 11, 0.18);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  border-radius: 9999px;
+  color: #fde68a;
+  font-size: 0.76rem;
+  font-weight: 600;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5), 0 0 12px rgba(245, 158, 11, 0.2);
+  z-index: 40;
+  animation: toastSlideIn 0.3s ease-out;
+  pointer-events: auto;
+}
+
+.rpc-status-icon {
+  font-size: 0.85rem;
+}
+
+.rpc-status-msg {
+  letter-spacing: 0.3px;
+}
+
+.rpc-status-close {
+  background: transparent;
+  border: none;
+  color: #fde68a;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 4px;
+  opacity: 0.75;
+  transition: opacity 0.15s ease;
+}
+
+.rpc-status-close:hover {
+  opacity: 1;
+}
+
+

@@ -78,6 +78,7 @@ export function Blockchain({
           isSelected={selectedBlock?.number === block.number}
           onSelect={onSelectBlock}
           cinematicMode={cinematicMode}
+          isForming={formingBlockNumber === block.number}
         />
       ))}
 

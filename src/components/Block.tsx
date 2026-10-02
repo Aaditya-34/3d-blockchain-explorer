@@ -12,6 +12,7 @@ interface BlockProps {
   isSelected: boolean;
   onSelect: (block: BlockData) => void;
   cinematicMode?: boolean;
+  isForming?: boolean;
 }
 
 export function Block({
@@ -21,6 +22,7 @@ export function Block({
   isSelected,
   onSelect,
   cinematicMode = true,
+  isForming = false,
 }: BlockProps) {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
@@ -41,7 +43,7 @@ export function Block({
   const posZ = position[2];
   const blockNumber = block.number;
   const isExiting = block.isExiting;
-  const isNewLiveMint = isLatest && blockNumber > 21849199;
+  const isNewLiveMint = isForming || (isLatest && blockNumber > 21849199);
 
   // Stage 5: Block number counts up during link draw for new blocks
   const [displayNumber, setDisplayNumber] = useState<number>(() =>
