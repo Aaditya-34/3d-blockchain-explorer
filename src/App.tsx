@@ -21,7 +21,24 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Every 5 seconds: mint new block, shift chain, limit to max 15 blocks (oldest fading out)
+  // Prune exiting blocks after fade-out animation completes
+  useEffect(() => {
+    const exitingBlock = blocks.find((b) => b.isExiting);
+    if (!exitingBlock) return;
+
+    const timer = setTimeout(() => {
+      setSelectedBlock((current) =>
+        current?.number === exitingBlock.number ? null : current
+      );
+      setBlocks((current) =>
+        current.filter((b) => b.number !== exitingBlock.number)
+      );
+    }, 750);
+
+    return () => clearTimeout(timer);
+  }, [blocks]);
+
+  // Every 5 seconds: mint new block, shift chain, only mark oldest as exiting when non-exiting blocks > 15
   useEffect(() => {
     const interval = setInterval(() => {
       // Trigger live pulse animation in HUD
@@ -29,59 +46,37 @@ export default function App() {
       setTimeout(() => setIsLivePulsing(false), 1400);
 
       setBlocks((prevBlocks) => {
-        const active = prevBlocks.filter((b) => !b.isExiting);
-        if (active.length === 0) return prevBlocks;
+        const nonExiting = prevBlocks.filter((b) => !b.isExiting);
+        if (nonExiting.length === 0) return prevBlocks;
 
-        const latestBlock = active[active.length - 1];
+        const latestBlock = nonExiting[nonExiting.length - 1];
         const newBlock = createNewBlock(latestBlock);
 
-        // Keep at most 15 blocks: oldest fades out
-        if (active.length >= 15) {
-          const oldestNumber = active[0].number;
+        // Update timestamps and statuses of existing blocks
+        const updated = prevBlocks.map((b) => {
+          if (b.number === latestBlock.number) {
+            return { ...b, status: 'confirmed' as const, timestamp: '5s ago' };
+          }
+          const age = (newBlock.number - b.number) * 5;
+          const status =
+            newBlock.number - b.number > 3
+              ? ('finalized' as const)
+              : ('confirmed' as const);
+          return { ...b, status, timestamp: `${age}s ago` };
+        });
 
-          // Deselect if the exiting block is currently inspected
-          setSelectedBlock((current) =>
-            current?.number === oldestNumber ? null : current
+        let nextBlocks = [...updated, newBlock];
+        const currentNonExiting = nextBlocks.filter((b) => !b.isExiting);
+
+        // Only mark the oldest block as exiting when the number of non-exiting blocks is greater than 15
+        if (currentNonExiting.length > 15) {
+          const oldestNumber = currentNonExiting[0].number;
+          nextBlocks = nextBlocks.map((b) =>
+            b.number === oldestNumber ? { ...b, isExiting: true } : b
           );
-
-          const updated = prevBlocks.map((b) => {
-            if (b.number === oldestNumber) {
-              return { ...b, isExiting: true };
-            }
-            if (b.number === latestBlock.number) {
-              return { ...b, status: 'confirmed' as const, timestamp: '5s ago' };
-            }
-            const age = (newBlock.number - b.number) * 5;
-            const status =
-              newBlock.number - b.number > 3
-                ? ('finalized' as const)
-                : ('confirmed' as const);
-            return { ...b, status, timestamp: `${age}s ago` };
-          });
-
-          // After fade-out animation completes (750ms), prune the oldest block from state
-          setTimeout(() => {
-            setBlocks((current) =>
-              current.filter((b) => b.number !== oldestNumber)
-            );
-          }, 750);
-
-          return [...updated, newBlock];
-        } else {
-          // Less than 15 blocks: append newest
-          const updated = prevBlocks.map((b) => {
-            if (b.number === latestBlock.number) {
-              return { ...b, status: 'confirmed' as const, timestamp: '5s ago' };
-            }
-            const age = (newBlock.number - b.number) * 5;
-            const status =
-              newBlock.number - b.number > 3
-                ? ('finalized' as const)
-                : ('confirmed' as const);
-            return { ...b, status, timestamp: `${age}s ago` };
-          });
-          return [...updated, newBlock];
         }
+
+        return nextBlocks;
       });
     }, 5000);
 
