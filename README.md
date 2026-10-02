@@ -20,6 +20,7 @@
 - **Smooth Overview Return**: Closing the inspector drawer via the close button (✕), clicking empty space, or pressing the **Escape** key smoothly glides the camera back to the wide overview.
 - **Live Block Minting Every 5s**: Automatically mints new blocks on a 5-second interval featuring a bouncy scale-in (`back.out`) and an explosive neon glow bloom, while shifting existing blocks to keep the newest block at the front.
 - **Dynamic 15-Block Window**: The chain dynamically grows from 10 up to 15 blocks. Once 15 blocks are reached, the oldest block fades out smoothly (scaling to zero and fading opacity) before being pruned.
+- **Transaction Particles & Floating Mempool**: Single high-performance `InstancedMesh` displaying a floating, organically drifting "mempool" cluster near the chain's leading edge. When a block is minted, the cluster and surrounding space feed glowing transaction particles (proportional to the block's transaction count, up to 80 particles) along curved trajectories into the new block, fading out as they arrive.
 - **Parent-Hash Linking**: Every newly minted block cryptographically links to the previous block's exact hash via `parentHash`, preserving consensus integrity across the chain.
 - **Glassmorphic Cyber HUD**: High-tech heads-up display overlay featuring:
   - **Pulsing "LIVE" Pill**: Glassmorphic status badge that ripples and pulses upon block arrival.
@@ -91,7 +92,7 @@
 
 ## Roadmap
 
-- [ ] **Transaction Particles**: Visualizing individual transaction data particles streaming into blocks as they are mined.
+- [x] **Transaction Particles**: Visualizing individual transaction data particles streaming into blocks as they are mined, fed by a floating mempool.
 - [ ] **Real Chain Data**: Connecting to live Ethereum Mainnet or Sepolia testnet via Alchemy/Infura RPC WebSocket feeds.
 - [ ] **Search & Filter**: Direct search bar to find blocks by block height, hash, or miner address.
 - [ ] **Mobile & Touch Optimization**: Responsive HUD drawer layout and multi-touch gestures for mobile screens.

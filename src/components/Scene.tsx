@@ -2,6 +2,7 @@ import { Canvas } from '@react-three/fiber';
 import { StarsBackground } from './StarsBackground';
 import { Blockchain } from './Blockchain';
 import { Controls } from './Controls';
+import { TransactionParticles } from './TransactionParticles';
 import type { BlockData } from '../data/mockBlocks';
 
 interface SceneProps {
@@ -42,6 +43,9 @@ export function Scene({ blocks, selectedBlock, onSelectBlock }: SceneProps) {
           selectedBlock={selectedBlock}
           onSelectBlock={onSelectBlock}
         />
+
+        {/* Live Transaction Particles & Mempool Cluster */}
+        <TransactionParticles blocks={blocks} />
 
         {/* Smooth GSAP-driven OrbitControls */}
         <Controls selectedBlock={selectedBlock} blocks={blocks} />
