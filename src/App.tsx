@@ -5,10 +5,30 @@ import { mockBlocks, createNewBlock } from './data/mockBlocks';
 import type { BlockData } from './data/mockBlocks';
 import './App.css';
 
+export interface ToastData {
+  id: number;
+  blockNumber: number;
+  txCount: number;
+  shortHash: string;
+}
+
 export default function App() {
   const [blocks, setBlocks] = useState<BlockData[]>(mockBlocks);
   const [selectedBlock, setSelectedBlock] = useState<BlockData | null>(null);
   const [isLivePulsing, setIsLivePulsing] = useState(false);
+  const [cinematicMode, setCinematicMode] = useState(true);
+  const [formingStartTime, setFormingStartTime] = useState<number>(0);
+  const [formingBlockNumber, setFormingBlockNumber] = useState<number | null>(null);
+  const [toast, setToast] = useState<ToastData | null>(null);
+
+  // Auto-dismiss HUD toast after 4.2 seconds
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => {
+      setToast(null);
+    }, 4200);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   // Return to overview on Escape key press
   useEffect(() => {
@@ -38,9 +58,12 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [blocks]);
 
-  // Every 5 seconds: mint new block, shift chain, only mark oldest as exiting when non-exiting blocks > 15
+  // Every 5 seconds: mint new block, shift chain, trigger cinematic sequence & toast
   useEffect(() => {
     const interval = setInterval(() => {
+      const now = performance.now();
+      setFormingStartTime(now);
+
       // Trigger live pulse animation in HUD
       setIsLivePulsing(true);
       setTimeout(() => setIsLivePulsing(false), 1400);
@@ -51,6 +74,16 @@ export default function App() {
 
         const latestBlock = nonExiting[nonExiting.length - 1];
         const newBlock = createNewBlock(latestBlock);
+
+        setFormingBlockNumber(newBlock.number);
+
+        // Stage 6: Small HUD toast notification
+        setToast({
+          id: newBlock.number,
+          blockNumber: newBlock.number,
+          txCount: newBlock.txCount,
+          shortHash: `${newBlock.hash.slice(0, 8)}...${newBlock.hash.slice(-6)}`,
+        });
 
         // Update timestamps and statuses of existing blocks
         const updated = prevBlocks.map((b) => {
@@ -89,12 +122,19 @@ export default function App() {
         blocks={blocks}
         selectedBlock={selectedBlock}
         onSelectBlock={setSelectedBlock}
+        cinematicMode={cinematicMode}
+        formingStartTime={formingStartTime}
+        formingBlockNumber={formingBlockNumber}
       />
       <HUD
         blocks={blocks}
         selectedBlock={selectedBlock}
         onSelectBlock={setSelectedBlock}
         isLivePulsing={isLivePulsing}
+        cinematicMode={cinematicMode}
+        onToggleCinematic={() => setCinematicMode((prev) => !prev)}
+        toast={toast}
+        onDismissToast={() => setToast(null)}
       />
     </main>
   );

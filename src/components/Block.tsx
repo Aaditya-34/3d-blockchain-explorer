@@ -11,6 +11,7 @@ interface BlockProps {
   index: number;
   isSelected: boolean;
   onSelect: (block: BlockData) => void;
+  cinematicMode?: boolean;
 }
 
 export function Block({
@@ -19,6 +20,7 @@ export function Block({
   index,
   isSelected,
   onSelect,
+  cinematicMode = true,
 }: BlockProps) {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
@@ -39,35 +41,52 @@ export function Block({
   const posZ = position[2];
   const blockNumber = block.number;
   const isExiting = block.isExiting;
+  const isNewLiveMint = isLatest && blockNumber > 21849199;
 
-  // Mount Animation: Staggered for initial blocks, explosive scale-in and glow for minted blocks
+  // Stage 5: Block number counts up during link draw for new blocks
+  const [displayNumber, setDisplayNumber] = useState<number>(() =>
+    isNewLiveMint ? blockNumber - 8 : blockNumber
+  );
+
+  // Mount Animation: Staggered for initial blocks, cinematic solidify for newly minted blocks
   useEffect(() => {
     if (!groupRef.current) return;
     if (isMountedRef.current) return;
     isMountedRef.current = true;
 
     // Newly minted block arriving live
-    if (isLatest && blockNumber > 21849199) {
+    if (isNewLiveMint) {
       groupRef.current.position.set(posX, posY, posZ);
+      // Keep hidden until Stage 3 Solidify
+      groupRef.current.scale.set(0, 0, 0);
+
+      const solidifyDelay = cinematicMode ? 1.75 : 0.35;
+      const countDelay = cinematicMode ? 2.05 : 0.45;
+
+      // STAGE 3: SOLIDIFY - scale in from core outward with slight overshoot bounce
       gsap.fromTo(
         groupRef.current.scale,
-        { x: 0, y: 0, z: 0 },
+        { x: 0.05, y: 0.05, z: 0.05 },
         {
           x: 1,
           y: 1,
           z: 1,
-          duration: 0.85,
-          ease: 'back.out(1.8)',
+          duration: 0.65,
+          delay: solidifyDelay,
+          ease: 'back.out(2.2)', // slight overshoot bounce
         }
       );
 
+      // Emissive flash
       if (materialRef.current) {
         gsap.fromTo(
           materialRef.current,
-          { emissiveIntensity: 2.8 },
+          { opacity: 0, emissiveIntensity: 3.5 },
           {
-            emissiveIntensity: 0.7,
-            duration: 1.4,
+            opacity: 0.88,
+            emissiveIntensity: 0.65,
+            duration: 0.85,
+            delay: solidifyDelay,
             ease: 'power2.out',
           }
         );
@@ -76,14 +95,30 @@ export function Block({
       if (pointLightRef.current) {
         gsap.fromTo(
           pointLightRef.current,
-          { intensity: 7.0 },
+          { intensity: 7.2 },
           {
             intensity: 2.2,
-            duration: 1.4,
+            duration: 0.85,
+            delay: solidifyDelay,
             ease: 'power2.out',
           }
         );
       }
+
+      // STAGE 5: LINK - Block number counts up as link draws
+      const countObj = { val: blockNumber - 8 };
+      gsap.to(countObj, {
+        val: blockNumber,
+        duration: 0.7,
+        delay: countDelay,
+        ease: 'power1.out',
+        onUpdate: () => {
+          setDisplayNumber(Math.round(countObj.val));
+        },
+        onComplete: () => {
+          setDisplayNumber(blockNumber);
+        },
+      });
     } else {
       // Initial page load entrance
       gsap.fromTo(
@@ -110,7 +145,7 @@ export function Block({
         }
       );
     }
-  }, [blockNumber, index, isLatest, posX, posY, posZ]);
+  }, [blockNumber, index, isLatest, isNewLiveMint, posX, posY, posZ, cinematicMode]);
 
   // Smooth position shift when chain moves
   useEffect(() => {
@@ -257,7 +292,7 @@ export function Block({
         outlineWidth={0.03}
         outlineColor="#030712"
       >
-        {`#${block.number}`}
+        {`#${displayNumber}`}
       </Text>
 
       {/* Front Face Mini Badge */}

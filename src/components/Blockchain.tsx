@@ -1,20 +1,28 @@
 import { useMemo } from 'react';
 import { Block } from './Block';
 import { ConnectionLine } from './ConnectionLine';
+import { BlockFormingFX } from './BlockFormingFX';
 import type { BlockData } from '../data/mockBlocks';
+import { BLOCK_SPACING, BLOCK_HALF_WIDTH } from '../utils/chainLayout';
 
 interface BlockchainProps {
   blocks: BlockData[];
   selectedBlock: BlockData | null;
   onSelectBlock: (block: BlockData) => void;
+  cinematicMode?: boolean;
+  formingStartTime?: number;
+  formingBlockNumber?: number | null;
+  onImpact?: () => void;
 }
-
-import { BLOCK_SPACING, BLOCK_HALF_WIDTH } from '../utils/chainLayout';
 
 export function Blockchain({
   blocks,
   selectedBlock,
   onSelectBlock,
+  cinematicMode = true,
+  formingStartTime = 0,
+  formingBlockNumber = null,
+  onImpact,
 }: BlockchainProps) {
   // Separate active and exiting blocks so active chain stays centered
   const activeBlocks = useMemo(
@@ -48,8 +56,18 @@ export function Blockchain({
     });
   }, [activeBlocks]);
 
+  const latestActivePos = activePositions[activePositions.length - 1] ?? [0, 0, 0];
+
   return (
     <group position={[0, 0, 0]}>
+      {/* 3D Cinematic Block Forming FX (Stages 1, 2, 4) */}
+      <BlockFormingFX
+        position={latestActivePos}
+        formingBlockNumber={formingBlockNumber}
+        cinematicMode={cinematicMode}
+        onImpact={onImpact ?? (() => {})}
+      />
+
       {/* Glowing Blocks in Chain */}
       {blocks.map((block, i) => (
         <Block
@@ -59,6 +77,7 @@ export function Blockchain({
           index={i}
           isSelected={selectedBlock?.number === block.number}
           onSelect={onSelectBlock}
+          cinematicMode={cinematicMode}
         />
       ))}
 
@@ -67,6 +86,7 @@ export function Blockchain({
         const nextBlock = activeBlocks[i + 1];
         const startX = activePositions[i][0] + BLOCK_HALF_WIDTH;
         const endX = activePositions[i + 1][0] - BLOCK_HALF_WIDTH;
+        const isNewLink = i === activeBlocks.length - 2;
 
         return (
           <ConnectionLine
@@ -74,6 +94,9 @@ export function Blockchain({
             start={[startX, 0, 0]}
             end={[endX, 0, 0]}
             index={i}
+            isNewLink={isNewLink}
+            cinematicMode={cinematicMode}
+            formingStartTime={formingStartTime}
           />
         );
       })}

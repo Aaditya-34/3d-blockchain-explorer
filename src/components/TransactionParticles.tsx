@@ -7,9 +7,10 @@ import { getBlockPosition } from '../utils/chainLayout';
 
 interface TransactionParticlesProps {
   blocks: BlockData[];
+  cinematicMode: boolean;
 }
 
-const MAX_FLYING = 80;
+const MAX_FLYING = 120;
 const MEMPOOL_COUNT = 45;
 const TOTAL_INSTANCES = MAX_FLYING + MEMPOOL_COUNT;
 
@@ -29,6 +30,10 @@ function createFlyingData() {
     targetX: new Float32Array(MAX_FLYING),
     targetY: new Float32Array(MAX_FLYING),
     targetZ: new Float32Array(MAX_FLYING),
+    initialRadius: new Float32Array(MAX_FLYING),
+    spiralOffset: new Float32Array(MAX_FLYING),
+    dirX: new Float32Array(MAX_FLYING),
+    dirZ: new Float32Array(MAX_FLYING),
     progress: new Float32Array(MAX_FLYING),
     speed: new Float32Array(MAX_FLYING),
     delay: new Float32Array(MAX_FLYING),
@@ -63,15 +68,18 @@ function createMempoolData() {
 
     speed[i] = 0.7 + ((i % 5) / 5) * 1.1;
     phase[i] = ((i % 9) / 9) * Math.PI * 2;
-    radius[i] = 0.2 + ((i % 4) / 4) * 0.35;
-    size[i] = 0.045 + ((i % 6) / 6) * 0.04;
+    radius[i] = 0.25 + ((i % 4) / 4) * 0.35;
+    size[i] = 0.08 + ((i % 6) / 6) * 0.05; // Slightly larger for better visibility
     colorType[i] = i % 3; // 0: cyan, 1: purple, 2: white
   }
 
   return { offsetX, offsetY, offsetZ, speed, phase, radius, size, colorType };
 }
 
-export function TransactionParticles({ blocks }: TransactionParticlesProps) {
+export function TransactionParticles({
+  blocks,
+  cinematicMode,
+}: TransactionParticlesProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const haloRef = useRef<THREE.Group>(null);
   const lastMintedNumberRef = useRef<number | null>(null);
@@ -112,11 +120,14 @@ export function TransactionParticles({ blocks }: TransactionParticlesProps) {
     if (latestBlock.number !== lastMintedNumberRef.current) {
       lastMintedNumberRef.current = latestBlock.number;
 
-      // Particle count reflects block transaction count, capped at 80
-      const particleCount = Math.min(Math.max(15, latestBlock.txCount), MAX_FLYING);
+      // Particle count scaled with txCount: minimum 25, maximum 120
+      const txCount = latestBlock.txCount || 80;
+      const particleCount = Math.min(Math.max(25, Math.floor(txCount * 0.5)), MAX_FLYING);
       const [tx, ty, tz] = getBlockPosition(totalActive - 1, totalActive);
       const flying = flyingDataRef.current;
       const mempool = mempoolDataRef.current;
+
+      const durationSpeed = cinematicMode ? 0.95 : 1.8;
 
       for (let i = 0; i < MAX_FLYING; i++) {
         if (i < particleCount) {
@@ -125,33 +136,41 @@ export function TransactionParticles({ blocks }: TransactionParticlesProps) {
           flying.targetX[i] = tx;
           flying.targetY[i] = ty;
           flying.targetZ[i] = tz;
-          flying.speed[i] = 0.85 + Math.random() * 0.7; // Reach in ~0.9s - 1.2s
-          flying.delay[i] = Math.random() * 0.65; // Staggered stream
-          flying.arc[i] = (Math.random() - 0.3) * 2.2;
-          flying.size[i] = 0.055 + Math.random() * 0.045;
+          flying.speed[i] = (0.75 + ((i % 5) / 5) * 0.5) * durationSpeed;
+          flying.delay[i] = cinematicMode ? ((i % 10) / 10) * 0.45 : 0;
+          flying.arc[i] = ((i % 7) / 7 - 0.4) * 2.2;
+          flying.size[i] = 0.085 + ((i % 6) / 6) * 0.055; // Noticeably larger, glowing particles
           flying.colorType[i] = i % 4; // 0: pink, 1: cyan, 2: white, 3: purple
 
-          // ~35% of particles stream from the mempool cluster, rest from sphere above/around
-          if (Math.random() < 0.35) {
+          flying.spiralOffset[i] = (i / particleCount) * Math.PI * 2;
+          flying.dirX[i] = i % 2 === 0 ? 1 : -1;
+          flying.dirZ[i] = i % 3 === 0 ? 1 : -1;
+
+          // ~40% of particles stream directly from the floating mempool cluster
+          if (i % 5 < 2) {
             const mIdx = i % MEMPOOL_COUNT;
             flying.startX[i] = mempoolPos[0] + mempool.offsetX[mIdx];
             flying.startY[i] = mempoolPos[1] + mempool.offsetY[mIdx];
             flying.startZ[i] = mempoolPos[2] + mempool.offsetZ[mIdx];
+            const dx = flying.startX[i] - tx;
+            const dz = flying.startZ[i] - tz;
+            flying.initialRadius[i] = Math.sqrt(dx * dx + dz * dz);
           } else {
-            // Sphere around and above the newly minted block
-            const r = 2.4 + Math.random() * 3.6;
-            const theta = Math.random() * Math.PI * 2;
-            const phi = Math.random() * (Math.PI * 0.45); // Mostly hemisphere above block
+            // Sphere around and above the newly forming block
+            const r = 2.6 + ((i % 8) / 8) * 3.8;
+            const theta = (i / particleCount) * Math.PI * 2 + ((i % 4) * 0.5);
+            const phi = ((i % 6) / 6) * (Math.PI * 0.42) + 0.1; // Hemisphere above
             flying.startX[i] = tx + r * Math.sin(phi) * Math.cos(theta);
             flying.startY[i] = ty + 1.2 + r * Math.cos(phi);
             flying.startZ[i] = tz + r * Math.sin(phi) * Math.sin(theta);
+            flying.initialRadius[i] = r;
           }
         } else {
           flying.active[i] = 0;
         }
       }
     }
-  }, [latestBlock, totalActive, mempoolPos]);
+  }, [latestBlock, totalActive, mempoolPos, cinematicMode]);
 
   // Set initial instance colors
   useEffect(() => {
@@ -211,14 +230,14 @@ export function TransactionParticles({ blocks }: TransactionParticlesProps) {
         const t = Math.min(1.0, flying.progress[i]);
 
         if (t >= 1.0) {
-          // Arrived at block, fade out by setting scale to 0
+          // Arrived at block: fade out into the energy core
           flying.active[i] = 0;
           DUMMY.scale.set(0, 0, 0);
           DUMMY.position.set(0, -999, 0);
           DUMMY.updateMatrix();
           mesh.setMatrixAt(i, DUMMY.matrix);
         } else {
-          // Interpolate curved path towards new block center
+          // STAGE 1 MEMPOOL CONVERGE: Inward spiral trajectory towards target center
           const sx = flying.startX[i];
           const sy = flying.startY[i];
           const sz = flying.startZ[i];
@@ -226,20 +245,30 @@ export function TransactionParticles({ blocks }: TransactionParticlesProps) {
           const ty = flying.targetY[i];
           const tz = flying.targetZ[i];
 
-          // Smooth curved trajectory
-          const arcOffset = Math.sin(t * Math.PI) * flying.arc[i];
-          const curX = THREE.MathUtils.lerp(sx, tx, t);
-          const curY = THREE.MathUtils.lerp(sy, ty, t) + arcOffset;
-          const curZ = THREE.MathUtils.lerp(sz, tz, t);
+          // Spiral rotation around vertical axis as it converges
+          const remainingR = (1.0 - t) * flying.initialRadius[i];
+          const spiralAngle = (1.0 - t) * Math.PI * 3.5 + flying.spiralOffset[i];
 
-          // Fade out as it arrives (scale down to 0)
+          const spiralX = tx + Math.cos(spiralAngle) * remainingR * flying.dirX[i];
+          const spiralZ = tz + Math.sin(spiralAngle) * remainingR * flying.dirZ[i];
+
+          // Blend from direct trajectory to spiral as it approaches
+          const directX = THREE.MathUtils.lerp(sx, tx, t);
+          const directZ = THREE.MathUtils.lerp(sz, tz, t);
+          const blendSpiral = Math.sin(t * Math.PI);
+
+          const curX = THREE.MathUtils.lerp(directX, spiralX, blendSpiral * 0.7);
+          const curY = THREE.MathUtils.lerp(sy, ty, t) + Math.sin(t * Math.PI) * flying.arc[i];
+          const curZ = THREE.MathUtils.lerp(directZ, spiralZ, blendSpiral * 0.7);
+
+          // Scale fades down smoothly as it enters the energy core
           const scaleMult = Math.sin((1.0 - t) * Math.PI * 0.5);
           const currentSize = flying.size[i] * scaleMult;
 
           DUMMY.position.set(curX, curY, curZ);
           DUMMY.scale.set(currentSize, currentSize, currentSize);
-          DUMMY.rotation.x = time * 2.5 + i;
-          DUMMY.rotation.y = time * 3.0 + i;
+          DUMMY.rotation.x = time * 3.5 + i;
+          DUMMY.rotation.y = time * 4.0 + i;
           DUMMY.updateMatrix();
           mesh.setMatrixAt(i, DUMMY.matrix);
         }
@@ -273,13 +302,13 @@ export function TransactionParticles({ blocks }: TransactionParticlesProps) {
       const pz = mBaseZ + mempool.offsetZ[j] + driftZ;
 
       // Subtle breathing scale
-      const breathe = 1.0 + Math.sin(time * 2.0 + ph) * 0.25;
+      const breathe = 1.0 + Math.sin(time * 2.2 + ph) * 0.28;
       const curSize = mempool.size[j] * breathe;
 
       DUMMY.position.set(px, py, pz);
       DUMMY.scale.set(curSize, curSize, curSize);
-      DUMMY.rotation.x = time * 1.2 + j;
-      DUMMY.rotation.y = time * 1.5 + j;
+      DUMMY.rotation.x = time * 1.4 + j;
+      DUMMY.rotation.y = time * 1.7 + j;
       DUMMY.updateMatrix();
       mesh.setMatrixAt(idx, DUMMY.matrix);
     }
@@ -304,9 +333,10 @@ export function TransactionParticles({ blocks }: TransactionParticlesProps) {
         <octahedronGeometry args={[1, 0]} />
         <meshBasicMaterial
           transparent={true}
-          opacity={0.92}
+          opacity={0.95}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
+          toneMapped={false}
         />
       </instancedMesh>
 

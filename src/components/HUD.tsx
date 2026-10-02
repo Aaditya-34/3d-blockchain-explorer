@@ -1,11 +1,16 @@
 import { useState } from 'react';
 import type { BlockData } from '../data/mockBlocks';
+import type { ToastData } from '../App';
 
 interface HUDProps {
   blocks: BlockData[];
   selectedBlock: BlockData | null;
   onSelectBlock: (block: BlockData | null) => void;
   isLivePulsing: boolean;
+  cinematicMode: boolean;
+  onToggleCinematic: () => void;
+  toast: ToastData | null;
+  onDismissToast: () => void;
 }
 
 export function HUD({
@@ -13,6 +18,10 @@ export function HUD({
   selectedBlock,
   onSelectBlock,
   isLivePulsing,
+  cinematicMode,
+  onToggleCinematic,
+  toast,
+  onDismissToast,
 }: HUDProps) {
   const [copied, setCopied] = useState(false);
 
@@ -41,6 +50,19 @@ export function HUD({
         </div>
 
         <div className="hud-header-right">
+          {/* Cinematic Mode Toggle */}
+          <button
+            className={`cinematic-toggle-btn ${cinematicMode ? 'active' : ''}`}
+            onClick={onToggleCinematic}
+            title={cinematicMode ? 'Cinematic Mode: Active (~3s sequence)' : 'Cinematic Mode: Off (Fast sequence for low-end devices)'}
+          >
+            <span className="cinematic-icon">⚡</span>
+            <span className="cinematic-label">CINEMATIC</span>
+            <span className={`cinematic-badge ${cinematicMode ? 'badge-on' : 'badge-off'}`}>
+              {cinematicMode ? 'ON' : 'OFF'}
+            </span>
+          </button>
+
           {/* Pulsing LIVE Pill */}
           <div
             className={`live-pill ${isLivePulsing ? 'live-pill-pulsing' : ''}`}
@@ -60,6 +82,39 @@ export function HUD({
           </div>
         </div>
       </header>
+
+      {/* Stage 6: Small HUD Toast Notification */}
+      {toast && (
+        <div
+          className="hud-toast"
+          onClick={onDismissToast}
+          role="status"
+          aria-live="polite"
+        >
+          <div className="hud-toast-glow" />
+          <div className="hud-toast-badge">MINED</div>
+          <div className="hud-toast-body">
+            <span className="hud-toast-title">Block #{toast.blockNumber} mined</span>
+            <span className="hud-toast-details">
+              <span className="hud-toast-tx">{toast.txCount} txs</span>
+              <span className="hud-toast-sep">•</span>
+              <span className="hud-toast-hash" title={toast.shortHash}>
+                {toast.shortHash}
+              </span>
+            </span>
+          </div>
+          <button
+            className="hud-toast-close"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDismissToast();
+            }}
+            aria-label="Dismiss notification"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Block Inspector Sidebar / Card */}
       {currentBlock && (

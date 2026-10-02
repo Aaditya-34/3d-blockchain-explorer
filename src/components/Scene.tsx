@@ -1,4 +1,8 @@
+import { useState, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
+import { EffectComposer, Bloom } from '@react-three/postprocessing';
+import type { BloomEffect } from 'postprocessing';
+import gsap from 'gsap';
 import { StarsBackground } from './StarsBackground';
 import { Blockchain } from './Blockchain';
 import { Controls } from './Controls';
@@ -9,9 +13,41 @@ interface SceneProps {
   blocks: BlockData[];
   selectedBlock: BlockData | null;
   onSelectBlock: (block: BlockData | null) => void;
+  cinematicMode: boolean;
+  formingStartTime: number;
+  formingBlockNumber: number | null;
 }
 
-export function Scene({ blocks, selectedBlock, onSelectBlock }: SceneProps) {
+export function Scene({
+  blocks,
+  selectedBlock,
+  onSelectBlock,
+  cinematicMode,
+  formingStartTime,
+  formingBlockNumber,
+}: SceneProps) {
+  const bloomRef = useRef<BloomEffect>(null);
+  const [composerEnabled, setComposerEnabled] = useState(false);
+
+  // STAGE 4: Impact Bloom Flash
+  const handleImpact = () => {
+    setComposerEnabled(true);
+    if (bloomRef.current) {
+      bloomRef.current.intensity = 1.6;
+      gsap.killTweensOf(bloomRef.current);
+      gsap.to(bloomRef.current, {
+        intensity: 0,
+        duration: 0.85,
+        ease: 'power2.out',
+        onComplete: () => {
+          setComposerEnabled(false);
+        },
+      });
+    } else {
+      setTimeout(() => setComposerEnabled(false), 900);
+    }
+  };
+
   return (
     <div style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}>
       <Canvas
@@ -42,13 +78,36 @@ export function Scene({ blocks, selectedBlock, onSelectBlock }: SceneProps) {
           blocks={blocks}
           selectedBlock={selectedBlock}
           onSelectBlock={onSelectBlock}
+          cinematicMode={cinematicMode}
+          formingStartTime={formingStartTime}
+          formingBlockNumber={formingBlockNumber}
+          onImpact={handleImpact}
         />
 
         {/* Live Transaction Particles & Mempool Cluster */}
-        <TransactionParticles blocks={blocks} />
+        <TransactionParticles
+          blocks={blocks}
+          cinematicMode={cinematicMode}
+        />
 
-        {/* Smooth GSAP-driven OrbitControls */}
-        <Controls selectedBlock={selectedBlock} blocks={blocks} />
+        {/* Smooth GSAP-driven OrbitControls with subtle camera nudge */}
+        <Controls
+          selectedBlock={selectedBlock}
+          blocks={blocks}
+          formingStartTime={formingStartTime}
+          cinematicMode={cinematicMode}
+        />
+
+        {/* Stage 4: Short Impact Bloom Flash (enabled only while the effect plays) */}
+        <EffectComposer enabled={composerEnabled}>
+          <Bloom
+            ref={bloomRef}
+            intensity={1.6}
+            luminanceThreshold={0.2}
+            luminanceSmoothing={0.8}
+            mipmapBlur={false}
+          />
+        </EffectComposer>
       </Canvas>
     </div>
   );

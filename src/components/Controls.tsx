@@ -9,13 +9,45 @@ import { getBlockPosition } from '../utils/chainLayout';
 interface ControlsProps {
   selectedBlock: BlockData | null;
   blocks: BlockData[];
+  formingStartTime?: number;
+  cinematicMode?: boolean;
 }
 
-export function Controls({ selectedBlock, blocks }: ControlsProps) {
+export function Controls({
+  selectedBlock,
+  blocks,
+  formingStartTime = 0,
+  cinematicMode = true,
+}: ControlsProps) {
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const { camera } = useThree();
   const isFirstRender = useRef(true);
   const prevBlockNumberRef = useRef<number | null>(null);
+  const isUserInteractingRef = useRef(false);
+
+  // Track user interaction to prevent any camera nudges while user is controlling the camera
+  useEffect(() => {
+    const controls = controlsRef.current;
+    if (!controls) return;
+
+    const onStart = () => {
+      isUserInteractingRef.current = true;
+      gsap.killTweensOf(camera.position);
+      gsap.killTweensOf(controls.target);
+    };
+
+    const onEnd = () => {
+      isUserInteractingRef.current = false;
+    };
+
+    controls.addEventListener('start', onStart);
+    controls.addEventListener('end', onEnd);
+
+    return () => {
+      controls.removeEventListener('start', onStart);
+      controls.removeEventListener('end', onEnd);
+    };
+  }, [camera]);
 
   useEffect(() => {
     // Avoid re-animating on mount when nothing is selected
@@ -115,6 +147,89 @@ export function Controls({ selectedBlock, blocks }: ControlsProps) {
       if (controls) gsap.killTweensOf(controls.target);
     };
   }, [selectedBlock, blocks, camera]);
+
+  // Subtle camera nudge toward the new block during mint sequence
+  useEffect(() => {
+    // Only nudge when user is NOT inspecting a block and NOT actively manipulating controls
+    if (!formingStartTime || selectedBlock || isUserInteractingRef.current) return;
+
+    const controls = controlsRef.current;
+    if (!controls) return;
+
+    const activeBlocks = blocks.filter((b) => !b.isExiting);
+    if (activeBlocks.length === 0) return;
+    const totalActive = Math.max(1, activeBlocks.length);
+    const [latestX] = getBlockPosition(totalActive - 1, totalActive);
+
+    const nudgeDuration = cinematicMode ? 1.4 : 0.45;
+    const returnDuration = cinematicMode ? 1.4 : 0.45;
+
+    // Subtle offset toward new block
+    const nudgeCamX = latestX * 0.1;
+    const nudgeCamY = 4.2;
+    const nudgeCamZ = 24.5;
+    const nudgeTargetX = latestX * 0.07;
+
+    const tl = gsap.timeline({
+      onUpdate: () => {
+        if (!isUserInteractingRef.current) {
+          camera.lookAt(controls.target);
+          controls.update();
+        }
+      },
+    });
+
+    tl.to(
+      camera.position,
+      {
+        x: nudgeCamX,
+        y: nudgeCamY,
+        z: nudgeCamZ,
+        duration: nudgeDuration,
+        ease: 'power2.out',
+      },
+      0
+    );
+
+    tl.to(
+      controls.target,
+      {
+        x: nudgeTargetX,
+        duration: nudgeDuration,
+        ease: 'power2.out',
+      },
+      0
+    );
+
+    // Return to centered overview
+    tl.to(
+      camera.position,
+      {
+        x: 0,
+        y: 4,
+        z: 25,
+        duration: returnDuration,
+        ease: 'power2.inOut',
+      },
+      nudgeDuration
+    );
+
+    tl.to(
+      controls.target,
+      {
+        x: 0,
+        y: 0,
+        z: 0,
+        duration: returnDuration,
+        ease: 'power2.inOut',
+      },
+      nudgeDuration
+    );
+
+    return () => {
+      tl.kill();
+    };
+  }, [formingStartTime, selectedBlock, blocks, camera, cinematicMode]);
 
   return (
     <OrbitControls
